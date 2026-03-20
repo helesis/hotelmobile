@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: spa_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: spa_booking
+      POSTGRES_USER: spa_user
+      POSTGRES_PASSWORD: guclu_sifre_buraya
+    volumes:
+      - spa_pgdata:/var/lib/postgresql/data
+      - ./backend/db/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+    ports:
+      - "5433:5432"
+
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: spa_app
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: spa_booking
+      DB_USER: spa_user
+      DB_PASSWORD: guclu_sifre_buraya
+      JWT_SECRET: voyage-spa-jwt-secret-2024-degistir
+    volumes:
+      - ./frontend/public:/app/frontend/public
+    ports:
+      - "3000:3000"
+
+volumes:
+  spa_pgdata:

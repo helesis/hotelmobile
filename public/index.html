@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spa Rezervasyon — Voyage Sorgun</title>
+  <link rel="stylesheet" href="/css/shared.css">
+  <style>
+    .page-hero{background:linear-gradient(180deg,var(--navy-mid) 0%,var(--navy) 100%);padding:3rem 2rem 2rem;text-align:center;position:relative;overflow:hidden}
+    .page-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(201,168,76,0.07) 0%,transparent 70%)}
+    .page-hero h1{font-size:42px;color:var(--gold-light);margin-bottom:6px;position:relative}
+    .page-hero p{color:var(--cream-dim);font-size:14px;letter-spacing:.1em;text-transform:uppercase;position:relative}
+    .container{max-width:1100px;margin:0 auto;padding:2rem}
+    .date-strip{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;margin-bottom:2rem}
+    .date-strip::-webkit-scrollbar{display:none}
+    .date-card{flex:0 0 auto;min-width:80px;padding:12px 10px;background:var(--navy-card);border:1px solid rgba(201,168,76,.1);border-radius:var(--radius);text-align:center;cursor:pointer;transition:var(--transition)}
+    .date-card:hover{border-color:var(--gold-dim)}
+    .date-card.active{background:var(--gold);border-color:var(--gold)}
+    .date-card .day-name{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--cream-dim)}
+    .date-card .day-num{font-family:'Cormorant Garamond',serif;font-size:26px;line-height:1.1;color:var(--cream)}
+    .date-card .month{font-size:10px;color:var(--cream-dim)}
+    .date-card.active .day-name,.date-card.active .day-num,.date-card.active .month{color:var(--navy)}
+    .slots-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:8px}
+    .slots-header .wizard-title{margin-bottom:0}
+    .slots-header h2{font-size:24px;color:var(--gold-light)}
+    .slots-header .date-label{font-size:13px;color:var(--cream-dim)}
+    .slots-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:2rem}
+    .slot-btn{background:var(--navy-card);border:1px solid rgba(201,168,76,.15);border-radius:var(--radius);padding:14px 10px;text-align:center;cursor:pointer;transition:var(--transition)}
+    .slot-btn:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 4px 16px rgba(201,168,76,.12)}
+    .slot-btn.selected{border-color:var(--gold);background:rgba(201,168,76,.08)}
+    .slot-btn .time{font-family:'Cormorant Garamond',serif;font-size:22px;color:var(--cream)}
+    .slot-btn.slot-sold{opacity:.45;cursor:not-allowed;pointer-events:none}
+    .slot-btn.slot-sold:hover{border-color:rgba(201,168,76,.15);transform:none;box-shadow:none}
+    .slot-btn.slot-sold .time{color:var(--cream-dim)}
+    .slot-btn.slot-sold .slot-status{font-size:11px;color:var(--cream-dim);margin-top:4px}
+    .slot-btn .slot-discount{display:inline-block;font-size:10px;color:var(--navy);background:var(--green);padding:3px 8px;border-radius:6px;margin-top:6px;font-weight:700;letter-spacing:.03em}
+    .slot-btn.slot-sold .slot-discount{background:rgba(255,255,255,.15);color:var(--cream-dim)}
+    .slot-btn .slot-price{font-size:13px;color:var(--gold);margin-top:6px;font-family:'Cormorant Garamond',serif;font-weight:600}
+    .slot-btn .slot-price small{color:var(--cream-dim);text-decoration:line-through;font-size:11px;margin-left:4px}
+    .slots-prompt{color:var(--cream-dim);font-size:14px;padding:1rem 0;text-align:center}
+    .wizard{background:var(--navy-card);border:1px solid rgba(201,168,76,.15);border-radius:var(--radius);padding:1.5rem;margin-top:1rem}
+    .wizard-title{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--gold-light);margin-bottom:1.2rem}
+    .therapist-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:1.2rem}
+    .therapist-card{background:var(--navy-light);border:1px solid rgba(201,168,76,.1);border-radius:var(--radius);padding:16px 12px;text-align:center;cursor:pointer;transition:var(--transition)}
+    .therapist-card:hover{border-color:var(--gold-dim)}
+    .therapist-card.selected{border-color:var(--gold);background:rgba(201,168,76,.07)}
+    .t-avatar{width:52px;height:52px;background:var(--navy-mid);border:2px solid rgba(201,168,76,.25);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--gold-light);margin:0 auto 10px;overflow:hidden}
+    .t-avatar img{width:100%;height:100%;object-fit:cover}
+    .t-name{font-size:13px;font-weight:500;color:var(--cream)}
+    .massage-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:1.2rem}
+    .massage-card{background:var(--navy-light);border:1px solid rgba(201,168,76,.1);border-radius:var(--radius);padding:14px;cursor:pointer;transition:var(--transition)}
+    .massage-card:hover{border-color:var(--gold-dim)}
+    .massage-card.selected{border-color:var(--gold);background:rgba(201,168,76,.07)}
+    .m-name{font-weight:500;color:var(--cream);margin-bottom:6px;font-size:14px}
+    .m-desc{font-size:12px;color:var(--cream-dim);margin-bottom:10px;line-height:1.5}
+    .m-meta{display:flex;gap:8px;align-items:center}
+    .m-duration{font-size:11px;color:var(--cream-dim)}
+    .m-price{font-family:'Cormorant Garamond',serif;font-size:16px;color:var(--gold);margin-left:auto}
+    .booking-summary{background:var(--navy-light);border:1px solid rgba(201,168,76,.2);border-radius:var(--radius);padding:1.2rem;margin-bottom:1.2rem}
+    .summary-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+    .summary-row:last-child{border-bottom:none}
+    .s-label{font-size:12px;color:var(--cream-dim);text-transform:uppercase;letter-spacing:.06em}
+    .s-val{font-size:14px;color:var(--cream);font-weight:500}
+    .summary-row.total .s-val{font-family:'Cormorant Garamond',serif;font-size:20px;color:var(--gold)}
+    .section-divider{height:1px;background:rgba(201,168,76,.1);margin:1.5rem 0}
+  </style>
+</head>
+<body>
+<header class="header">
+  <div class="header-logo">
+    <div class="logo-icon">V</div>
+    <div>
+      <div class="logo-text">VOYAGE SORGUN</div>
+      <span class="logo-sub">Spa &amp; Wellness</span>
+    </div>
+  </div>
+  <nav class="header-nav">
+    <a href="/" class="active">Rezervasyon</a>
+    <a href="/admin">Yönetim</a>
+  </nav>
+  <div class="header-user">
+    <div class="avatar" id="headerUserAvatar">--</div>
+    <span id="headerUserName">...</span>
+  </div>
+</header>
+<div class="gold-line"></div>
+
+<section class="page-hero">
+  <h1>Spa Rezervasyonu</h1>
+  <p>Masaj türü, saat ve terapist seçerek randevunuzu oluşturun</p>
+</section>
+
+<div class="container">
+  <div class="date-strip" id="dateStrip"></div>
+  <div id="bookingWizard" style="display:none">
+    <div class="section-divider"></div>
+    <div id="stepMassage" class="wizard">
+      <div class="wizard-title">1 — Masaj türü seçin</div>
+      <p class="slots-prompt" style="margin-top:-8px;margin-bottom:12px;text-align:left">Seçilebilir masajlar, o gün en az bir müsait slotta yapılabilen tüm türlerdir.</p>
+      <div class="massage-grid" id="massageGrid"></div>
+    </div>
+    <div id="stepSlots" class="wizard" style="margin-top:1rem">
+      <div class="slots-header">
+        <h2 class="wizard-title" id="slotsSectionTitle">2 — Saat seçin</h2>
+        <span class="date-label" id="selectedDateLabel"></span>
+      </div>
+      <div id="slotsContainer"><div class="spinner"></div></div>
+    </div>
+    <div id="stepTherapist" class="wizard" style="display:none;margin-top:1rem">
+      <div class="wizard-title">3 — Terapist seçin</div>
+      <div class="therapist-grid" id="therapistGrid"></div>
+    </div>
+    <div id="stepConfirm" class="wizard" style="display:none;margin-top:1rem">
+      <div class="wizard-title">4 — Rezervasyonu onaylayın</div>
+      <div class="booking-summary" id="bookingSummary"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="resetWizard()">İptal</button>
+        <button class="btn btn-gold" onclick="confirmBooking()" id="confirmBtn">✓ Rezervasyonu Tamamla</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const DEMO_NAMES=['Elif Arslan','Emre Yılmaz','Zeynep Kaya','Burak Demir','Selin Öztürk','Can Şahin','Ayşe Çelik','Mert Yıldız','Defne Koç','Ege Aydın','Naz Özdemir','Kerem Polat','Sude Aksoy','Alp Güneş','Ceren Özkan','Jonas Furlong','Deniz Yavuz','Ece Kurt','Barış Özer','Melis Ateş','Onur Çetin','Aslı Yıldırım','Kaan Korkmaz','Beste Özdemir','Murat Şen','Dilara Koç','Berk Acar','Cemre Yalçın','Sarp Güngör','Esra Bayrak','Talha Arslan','İrem Demir','Oğuz Kaplan','Pelin Yılmaz','Arda Kaya','Simge Çakır','Yiğit Öztürk','Nilgün Aksoy','Tolga Doğan','Merve Bulut','Fırat Yıldız','Damla Erdem','Serkan Kılıç','Begüm Şahin','Emre Çelik','Tuğba Arslan','Volkan Özkan','Gizem Aydın','Umut Demir','Pınar Koç','Hakan Yalçın','Selin Güneş','Batuhan Öztürk','Derya Kurt','Kerem Aksoy','Işıl Bayrak','Ozan Doğan','Burcu Şen','Mete Çakır','Elif Çetin','Burak Yavuz','Seda Kaplan','Cem Korkmaz','Özge Özer','Koray Ateş','Duygu Yıldırım','Berkant Özdemir'];
+const GUEST={name:DEMO_NAMES[Math.floor(Math.random()*DEMO_NAMES.length)]};
+let selectedDate='',selectedSlot=null,selectedTherapist=null,selectedMassage=null,currentSlots=[],slotDiscounts=[];
+const TZ='Europe/Istanbul';
+function toIstanbulDateStr(d){return d.toLocaleDateString('en-CA',{timeZone:TZ});}
+
+function getRandomGuestName(){
+  const others=DEMO_NAMES.filter(n=>n!==GUEST.name);
+  return others.length?others[Math.floor(Math.random()*others.length)]:DEMO_NAMES[0];
+}
+function updateHeaderUser(name){
+  GUEST.name=name;
+  const init=name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+  const av=document.getElementById('headerUserAvatar');
+  const sp=document.getElementById('headerUserName');
+  if(av)av.textContent=init;
+  if(sp)sp.textContent=name;
+}
+
+const DAY_NAMES=['Pazar','Pazartesi','Salı','Çarşamba','Perşembe','Cuma','Cumartesi'];
+const DAY_SHORT=['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
+const MONTHS=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
+const MONTHS_SHORT=['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+
+function buildDateStrip(){
+  const strip=document.getElementById('dateStrip');
+  const today=new Date();strip.innerHTML='';
+  const todayIstanbul=toIstanbulDateStr(today);
+  for(let i=0;i<7;i++){
+    const d=new Date(Date.now()+i*86400000);
+    const iso=toIstanbulDateStr(d);
+    const card=document.createElement('div');
+    card.className='date-card'+(i===0?' active':'');
+    const dParsed=new Date(iso+'T12:00:00+03:00');
+    card.innerHTML=`<div class="day-name">${iso===todayIstanbul?'Bugün':DAY_SHORT[dParsed.getDay()]}</div><div class="day-num">${dParsed.getDate()}</div><div class="month">${MONTHS_SHORT[dParsed.getMonth()]}</div>`;
+    card.onclick=()=>selectDate(iso,card);
+    strip.appendChild(card);
+    if(i===0)selectDate(iso,card,false);
+  }
+}
+
+function clearBookingState(){
+  selectedSlot=null;selectedTherapist=null;selectedMassage=null;
+  document.getElementById('stepTherapist').style.display='none';
+  document.getElementById('stepConfirm').style.display='none';
+  document.querySelectorAll('.massage-card').forEach(c=>c.classList.remove('selected'));
+  document.querySelectorAll('.slot-btn').forEach(b=>b.classList.remove('selected'));
+  const title=document.getElementById('slotsSectionTitle');
+  if(title)title.textContent='2 — Saat seçin';
+}
+
+function selectDate(iso,el,load=true){
+  document.querySelectorAll('.date-card').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');selectedDate=iso;
+  const d=new Date(iso+'T12:00:00+03:00');
+  document.getElementById('selectedDateLabel').textContent=`${DAY_NAMES[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  clearBookingState();
+  if(load)loadSlots();
+}
+
+function getCombinedDiscount(slot){
+  const timeDisc=getDiscountInfo(slot?.time||'00:00');
+  const availDisc=Number(slot?.availability_discount)||0;
+  const timePercent=timeDisc?.percent||0;
+  const percent=Math.max(timePercent,availDisc);
+  if(percent<=0)return null;
+  const label=percent===timePercent&&timeDisc?.label?timeDisc.label:'Müsaitlik indirimi';
+  return{percent,label};
+}
+function getCombinedDiscountPercent(slot){
+  const c=getCombinedDiscount(slot);
+  if(c)return c.percent;
+  return Number(slot?.availability_discount)||0;
+}
+
+function getDiscountedPrice(basePrice,slotOrTime){
+  const slot=typeof slotOrTime==='object'?slotOrTime:null;
+  const info=slot?getCombinedDiscount(slot):getDiscountInfo(slotOrTime||'00:00');
+  return Math.round(basePrice*(1-(info?.percent||0)/100));
+}
+
+function getDiscountInfo(slotTime){
+  const[h,m]=(slotTime||'00:00').split(':').map(Number);
+  const slotMins=h*60+m;
+  let best=null;
+  for(const d of slotDiscounts){
+    const[sh,sm]=(d.start_time||'00:00').split(':').map(Number);
+    const[eh,em]=(d.end_time||'23:59').split(':').map(Number);
+    const pct=Number(d.discount_percent)||0;
+    if(pct>0&&slotMins>=sh*60+sm&&slotMins<eh*60+em&&(!best||pct>best.percent)){
+      best={percent:pct,label:d.label||''};
+    }
+  }
+  return best;
+}
+
+async function loadSlots(){
+  const c=document.getElementById('slotsContainer');
+  c.innerHTML='<div class="spinner"></div>';
+  try{
+    const[availRes,discRes]=await Promise.all([
+      fetch(`/api/availability?date=${selectedDate}`),
+      fetch('/api/time-slot-discounts')
+    ]);
+    const discData=await discRes.json();
+    slotDiscounts=Array.isArray(discData)?discData:[];
+    const data=await availRes.json();
+    if(!availRes.ok)throw new Error(data.error||'Yüklenemedi');
+    currentSlots=Array.isArray(data)?data:(data.slots||[]);
+    showMassageSelectionStep();
+    renderSlotsPlaceholderOrFiltered();
+  }catch(e){c.innerHTML='<div class="empty-state"><div class="empty-icon">⚠️</div>'+(e.message||'Yüklenemedi.')+'</div>';}
+}
+
+/** Tüm müsait slotlarda en az bir terapistin yapabildiği eşsiz masaj türleri */
+function buildUniqueMassagesFromSlots(){
+  const map=new Map();
+  for(const slot of currentSlots){
+    const therapists=slot.available_therapists||slot.availableTherapists||[];
+    if(!therapists.length)continue;
+    for(const t of therapists){
+      const massages=t.massage_types||t.massageTypes||[];
+      for(const m of massages){
+        if(m&&m.id!=null&&!map.has(m.id))map.set(m.id,{...m});
+      }
+    }
+  }
+  return Array.from(map.values()).sort((a,b)=>(a.name||'').localeCompare(b.name||'','tr'));
+}
+
+function showMassageSelectionStep(){
+  const w=document.getElementById('bookingWizard');
+  const massages=buildUniqueMassagesFromSlots();
+  w.style.display='block';
+  document.getElementById('stepMassage').style.display='block';
+  document.getElementById('stepTherapist').style.display='none';
+  document.getElementById('stepConfirm').style.display='none';
+  const g=document.getElementById('massageGrid');g.innerHTML='';
+  if(!massages.length){
+    g.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">🌿</div>Bu tarihte müsait masaj türü yok.</div>';
+    return;
+  }
+  massages.forEach(m=>{
+    const card=document.createElement('div');card.className='massage-card';
+    const base=Number(m.price);
+    card.innerHTML=`<div class="m-name">${m.name}</div><div class="m-desc">${m.description||''}</div><div class="m-meta"><span class="m-duration">⏱ ${m.duration_minutes} dk</span><span class="m-price">₺${base.toLocaleString('tr-TR')} <small style="color:var(--cream-dim);font-weight:400">liste</small></span></div>`;
+    card.style.position='relative';
+    card.onclick=()=>selectMassageType(m,card);g.appendChild(card);
+  });
+}
+
+function selectMassageType(m,el){
+  document.querySelectorAll('.massage-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedMassage=m;
+  selectedSlot=null;
+  selectedTherapist=null;
+  document.getElementById('stepTherapist').style.display='none';
+  document.getElementById('stepConfirm').style.display='none';
+  document.querySelectorAll('.slot-btn').forEach(b=>b.classList.remove('selected'));
+  const title=document.getElementById('slotsSectionTitle');
+  title.textContent=`2 — Saat seçin · ${m.name}`;
+  renderSlotsForSelectedMassage();
+  document.getElementById('stepSlots').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function slotsBookableForMassage(massageId){
+  return currentSlots.filter(slot=>{
+    const therapists=slot.available_therapists||slot.availableTherapists||[];
+    return therapists.some(t=>(t.massage_types||[]).some(mt=>mt.id===massageId));
+  });
+}
+
+function renderSlotsPlaceholderOrFiltered(){
+  if(!selectedMassage){renderSlotsPlaceholder();return;}
+  renderSlotsForSelectedMassage();
+}
+
+function renderSlotsPlaceholder(){
+  const c=document.getElementById('slotsContainer');
+  if(!currentSlots.length){c.innerHTML='<div class="empty-state"><div class="empty-icon">🌿</div>Bu gün için slot bulunmuyor.</div>';return;}
+  c.innerHTML='<div class="slots-prompt">Masaj türünü seçtikten sonra bu alanda indirimli nihai fiyatlarla müsait saatler listelenir.</div>';
+  const t=document.getElementById('slotsSectionTitle');
+  if(t)t.textContent='2 — Saat seçin';
+}
+
+function renderSlotsForSelectedMassage(){
+  const c=document.getElementById('slotsContainer');
+  if(!selectedMassage){renderSlotsPlaceholder();return;}
+  const list=slotsBookableForMassage(selectedMassage.id);
+  if(!list.length){c.innerHTML='<div class="empty-state"><div class="empty-icon">🌿</div>Bu masaj için müsait saat yok.</div>';return;}
+  c.innerHTML='';
+  const g=document.createElement('div');g.className='slots-grid';
+  const basePrice=Number(selectedMassage.price);
+  list.forEach(slot=>{
+    const b=document.createElement('div');
+    const discountPct=getCombinedDiscountPercent(slot);
+    const finalPrice=getDiscountedPrice(basePrice,slot);
+    const hasDisc=finalPrice<basePrice;
+    b.className='slot-btn';
+    b.innerHTML=`<div class="time">${slot.time}</div><div class="slot-discount">%${discountPct} indirim</div><div class="slot-price">₺${finalPrice.toLocaleString('tr-TR')}${hasDisc?`<small>₺${basePrice.toLocaleString('tr-TR')}</small>`:''}</div>`;
+    b.onclick=()=>selectSlotAfterMassage(slot,b);
+    g.appendChild(b);
+  });
+  c.appendChild(g);
+}
+
+function selectSlotAfterMassage(slot,el){
+  document.querySelectorAll('.slot-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedSlot=slot;
+  selectedTherapist=null;
+  const therapists=(slot.available_therapists||[]).filter(t=>
+    (t.massage_types||[]).some(mt=>mt.id===selectedMassage.id)
+  );
+  showTherapistStep(therapists);
+}
+
+function showTherapistStep(therapists){
+  document.getElementById('stepTherapist').style.display='block';
+  document.getElementById('stepConfirm').style.display='none';
+  const g=document.getElementById('therapistGrid');g.innerHTML='';
+  if(!therapists.length){
+    g.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">⚠️</div>Bu saat için uygun terapist bulunamadı. Başka bir saat seçin.</div>';
+    document.getElementById('stepTherapist').scrollIntoView({behavior:'smooth',block:'nearest'});
+    return;
+  }
+  therapists.forEach(t=>{
+    const c=document.createElement('div');c.className='therapist-card';
+    const init=t.name.split(' ').map(w=>w[0]).join('').substring(0,2);
+    c.innerHTML=`<div class="t-avatar">${t.photo_url?`<img src="${t.photo_url}">`:'<span>'+init+'</span>'}</div><div class="t-name">${t.name}</div>`;
+    c.onclick=()=>selectTherapist(t,c);g.appendChild(c);
+  });
+  document.getElementById('stepTherapist').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function selectTherapist(t,el){
+  document.querySelectorAll('.therapist-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');selectedTherapist=t;showConfirmStep();
+}
+
+function showConfirmStep(){
+  document.getElementById('stepConfirm').style.display='block';
+  const d=new Date(selectedDate+'T12:00:00+03:00');
+  const[sh,sm]=selectedSlot.time.split(':').map(Number);
+  const em=sh*60+sm+selectedMassage.duration_minutes;
+  const endStr=`${String(Math.floor(em/60)).padStart(2,'0')}:${String(em%60).padStart(2,'0')}`;
+  const basePrice=Number(selectedMassage.price);
+  const finalPrice=getDiscountedPrice(basePrice,selectedSlot);
+  const discInfo=getCombinedDiscount(selectedSlot);
+  const pctAll=getCombinedDiscountPercent(selectedSlot);
+  const hasDiscount=finalPrice<basePrice;
+  const discountRow=hasDiscount?`<div class="summary-row" style="color:var(--green)"><span class="s-label">İndirim${discInfo?.label?' — '+discInfo.label:''}</span><span class="s-val">%${discInfo?.percent??pctAll} · −₺${(basePrice-finalPrice).toLocaleString('tr-TR')}</span></div>
+    <div class="summary-row"><span class="s-label">Liste fiyatı</span><span class="s-val" style="color:var(--cream-dim);text-decoration:line-through">₺${basePrice.toLocaleString('tr-TR')}</span></div>`:'';
+  document.getElementById('bookingSummary').innerHTML=`
+    <div class="summary-row"><span class="s-label">Misafir</span><span class="s-val">${GUEST.name}</span></div>
+    <div class="summary-row"><span class="s-label">Tarih</span><span class="s-val">${DAY_NAMES[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}</span></div>
+    <div class="summary-row"><span class="s-label">Saat</span><span class="s-val">${selectedSlot.time} – ${endStr}</span></div>
+    <div class="summary-row"><span class="s-label">Terapist</span><span class="s-val">${selectedTherapist.name}</span></div>
+    <div class="summary-row"><span class="s-label">Masaj</span><span class="s-val">${selectedMassage.name} (${selectedMassage.duration_minutes} dk)</span></div>
+    ${discountRow}
+    <div class="summary-row total"><span class="s-label">Ücret</span><span class="s-val">₺${Number(finalPrice).toLocaleString('tr-TR')}</span></div>`;
+  document.getElementById('stepConfirm').scrollIntoView({behavior:'smooth',block:'nearest'});
+  const confirmBtn=document.getElementById('confirmBtn');
+  if(confirmBtn){confirmBtn.disabled=false;confirmBtn.innerHTML='✓ Rezervasyonu Tamamla';}
+}
+
+async function confirmBooking(){
+  const btn=document.getElementById('confirmBtn');btn.disabled=true;btn.textContent='İşleniyor…';
+  try{
+    const r=await fetch('/api/reservations',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({guest_name:GUEST.name,therapist_id:selectedTherapist.id,massage_type_id:selectedMassage.id,date:selectedDate,start_time:selectedSlot.time})});
+    const data=await r.json();
+    if(!r.ok)throw new Error(data.error||'Hata');
+    showToast('Rezervasyonunuz oluşturuldu!','success');
+    updateHeaderUser(getRandomGuestName());
+    clearBookingState();
+    await loadSlots();
+    btn.disabled=false;btn.innerHTML='✓ Rezervasyonu Tamamla';
+  }catch(e){showToast(e.message,'error');btn.disabled=false;btn.innerHTML='✓ Rezervasyonu Tamamla';}
+}
+
+function resetWizard(){
+  clearBookingState();
+  showMassageSelectionStep();
+  renderSlotsPlaceholder();
+  const btn=document.getElementById('confirmBtn');
+  if(btn){btn.disabled=false;btn.innerHTML='✓ Rezervasyonu Tamamla';}
+}
+
+function showToast(msg,type='info'){
+  const t=document.getElementById('toast');
+  const item=document.createElement('div');item.className=`toast-item ${type}`;item.textContent=msg;
+  t.appendChild(item);setTimeout(()=>item.remove(),4000);
+}
+
+updateHeaderUser(GUEST.name);
+buildDateStrip();loadSlots();
+</script>
+</body>
+</html>
