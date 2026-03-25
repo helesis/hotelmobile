@@ -10,7 +10,7 @@ function renderHeader() {
     <header class="site-header">
       <div class="container header-inner">
         <a class="logo" href="#" onclick="navigateTo('booking');return false">
-          Voyage Sorgun
+          Some Lucky Resort
           <span>Spa &amp; Wellness</span>
         </a>
         <nav class="nav">

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Spa Rezervasyon — Voyage Sorgun</title>
+  <title>Spa Rezervasyon — Some Lucky Resort</title>
   <link rel="stylesheet" href="/css/shared.css">
   <style>
     .page-hero{background:linear-gradient(180deg,var(--navy-mid) 0%,var(--navy) 100%);padding:3rem 2rem 2rem;text-align:center;position:relative;overflow:hidden}
@@ -11,9 +11,26 @@
     .page-hero h1{font-size:42px;color:var(--gold-light);margin-bottom:6px;position:relative}
     .page-hero p{color:var(--cream-dim);font-size:14px;letter-spacing:.1em;text-transform:uppercase;position:relative}
     .container{max-width:1100px;margin:0 auto;padding:2rem}
-    .date-strip{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;margin-bottom:2rem}
-    .date-strip::-webkit-scrollbar{display:none}
-    .date-card{flex:0 0 auto;min-width:80px;padding:12px 10px;background:var(--navy-card);border:1px solid rgba(201,168,76,.1);border-radius:var(--radius);text-align:center;cursor:pointer;transition:var(--transition)}
+    /* Yatay tarih drum’u: ~11 hücre, snap, sonsuza yakın kaydırma */
+    .date-drum-wrap{position:relative;margin-bottom:2rem;width:100%}
+    .date-drum-wrap::before,.date-drum-wrap::after{content:'';position:absolute;top:0;bottom:12px;width:28px;z-index:1;pointer-events:none}
+    .date-drum-wrap::before{left:0;background:linear-gradient(90deg,var(--navy) 0%,transparent 100%)}
+    .date-drum-wrap::after{right:0;background:linear-gradient(270deg,var(--navy) 0%,transparent 100%)}
+    .date-strip{
+      display:flex;gap:8px;overflow-x:auto;overflow-y:hidden;
+      scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
+      scrollbar-width:thin;scroll-behavior:smooth;
+      padding:10px max(12px,calc(50% - clamp(32px,11vw,50px))) 14px;
+      margin:0 -0.5rem;
+    }
+    .date-strip::-webkit-scrollbar{height:6px}
+    .date-strip::-webkit-scrollbar-thumb{background:rgba(201,168,76,.25);border-radius:3px}
+    .date-card{
+      flex:0 0 clamp(64px,calc((100% - 80px) / 11),104px);
+      scroll-snap-align:center;
+      padding:12px 6px;background:var(--navy-card);border:1px solid rgba(201,168,76,.1);border-radius:var(--radius);
+      text-align:center;cursor:pointer;transition:var(--transition);box-sizing:border-box
+    }
     .date-card:hover{border-color:var(--gold-dim)}
     .date-card.active{background:var(--gold);border-color:var(--gold)}
     .date-card .day-name{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--cream-dim)}
@@ -70,7 +87,7 @@
   <div class="header-logo">
     <div class="logo-icon">V</div>
     <div>
-      <div class="logo-text">VOYAGE SORGUN</div>
+      <div class="logo-text">Some Lucky Resort</div>
       <span class="logo-sub">Spa &amp; Wellness</span>
     </div>
   </div>
@@ -91,7 +108,9 @@
 </section>
 
 <div class="container">
-  <div class="date-strip" id="dateStrip"></div>
+  <div class="date-drum-wrap">
+    <div class="date-strip" id="dateStrip" aria-label="Tarih seçimi — yatay kaydırın"></div>
+  </div>
   <div id="bookingWizard" style="display:none">
     <div class="section-divider"></div>
     <div id="stepMassage" class="wizard">
@@ -147,20 +166,105 @@ const DAY_SHORT=['Paz','Pzt','Sal','Çar','Per','Cum','Cmt'];
 const MONTHS=['Ocak','Şubat','Mart','Nisan','Mayıs','Haziran','Temmuz','Ağustos','Eylül','Ekim','Kasım','Aralık'];
 const MONTHS_SHORT=['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
 
+/** Bugünden itibaren gün offset’i → YYYY-MM-DD (İstanbul) */
+function isoFromDayOffset(off){
+  const d=new Date(Date.now()+off*86400000);
+  return toIstanbulDateStr(d);
+}
+
+let drumRangeStart=-200,drumRangeEnd=200;
+let dateDrumBound=false;
+let drumScrollTimer=null;
+
+function createDateCardForOffset(off){
+  const iso=isoFromDayOffset(off);
+  const todayIso=toIstanbulDateStr(new Date());
+  const card=document.createElement('div');
+  card.className='date-card';
+  card.dataset.iso=iso;
+  const dParsed=new Date(iso+'T12:00:00+03:00');
+  card.innerHTML=`<div class="day-name">${iso===todayIso?'Bugün':DAY_SHORT[dParsed.getDay()]}</div><div class="day-num">${dParsed.getDate()}</div><div class="month">${MONTHS_SHORT[dParsed.getMonth()]}</div>`;
+  card.onclick=()=>selectDate(iso,card,true);
+  return card;
+}
+
+const DRUM_MAX_PAST=800,DRUM_MAX_FUTURE=800;
+
+function prependDrumDays(){
+  const strip=document.getElementById('dateStrip');
+  if(!strip||strip.scrollLeft>240||drumRangeStart<=-DRUM_MAX_PAST)return;
+  const wBefore=strip.scrollWidth,slBefore=strip.scrollLeft;
+  const frag=document.createDocumentFragment();
+  const need=Math.min(45,drumRangeStart+DRUM_MAX_PAST);
+  if(need<=0)return;
+  const newStart=drumRangeStart-need;
+  for(let o=newStart;o<drumRangeStart;o++)frag.appendChild(createDateCardForOffset(o));
+  strip.insertBefore(frag,strip.firstChild);
+  drumRangeStart=newStart;
+  strip.scrollLeft=slBefore+(strip.scrollWidth-wBefore);
+}
+
+function appendDrumDays(){
+  const strip=document.getElementById('dateStrip');
+  if(!strip)return;
+  if(strip.scrollWidth-strip.clientWidth-strip.scrollLeft>240||drumRangeEnd>=DRUM_MAX_FUTURE)return;
+  const need=Math.min(45,DRUM_MAX_FUTURE-drumRangeEnd);
+  if(need<=0)return;
+  for(let o=drumRangeEnd+1;o<=drumRangeEnd+need;o++)strip.appendChild(createDateCardForOffset(o));
+  drumRangeEnd+=need;
+}
+
+function syncDrumToCenterCard(){
+  const strip=document.getElementById('dateStrip');
+  if(!strip)return;
+  const cx=strip.getBoundingClientRect().left+strip.clientWidth/2;
+  let best=null,bd=Infinity;
+  strip.querySelectorAll('.date-card').forEach(card=>{
+    const r=card.getBoundingClientRect();
+    const mid=r.left+r.width/2;
+    const dist=Math.abs(mid-cx);
+    if(dist<bd){bd=dist;best=card;}
+  });
+  if(!best||!best.dataset.iso)return;
+  const iso=best.dataset.iso;
+  if(iso===selectedDate){
+    document.querySelectorAll('#dateStrip .date-card').forEach(c=>c.classList.toggle('active',c===best));
+    return;
+  }
+  selectDate(iso,best,true);
+}
+
+function bindDateDrumScroll(strip){
+  if(dateDrumBound)return;
+  dateDrumBound=true;
+  const onScroll=()=>{
+    prependDrumDays();
+    appendDrumDays();
+    clearTimeout(drumScrollTimer);
+    drumScrollTimer=setTimeout(syncDrumToCenterCard,100);
+  };
+  strip.addEventListener('scroll',onScroll,{passive:true});
+  if('onscrollend' in window)strip.addEventListener('scrollend',syncDrumToCenterCard);
+}
+
 function buildDateStrip(){
   const strip=document.getElementById('dateStrip');
-  const today=new Date();strip.innerHTML='';
-  const todayIstanbul=toIstanbulDateStr(today);
-  for(let i=0;i<7;i++){
-    const d=new Date(Date.now()+i*86400000);
-    const iso=toIstanbulDateStr(d);
-    const card=document.createElement('div');
-    card.className='date-card'+(i===0?' active':'');
-    const dParsed=new Date(iso+'T12:00:00+03:00');
-    card.innerHTML=`<div class="day-name">${iso===todayIstanbul?'Bugün':DAY_SHORT[dParsed.getDay()]}</div><div class="day-num">${dParsed.getDate()}</div><div class="month">${MONTHS_SHORT[dParsed.getMonth()]}</div>`;
-    card.onclick=()=>selectDate(iso,card);
-    strip.appendChild(card);
-    if(i===0)selectDate(iso,card,false);
+  if(!strip)return;
+  drumRangeStart=-200;
+  drumRangeEnd=200;
+  dateDrumBound=false;
+  strip.replaceChildren();
+  const frag=document.createDocumentFragment();
+  for(let o=drumRangeStart;o<=drumRangeEnd;o++)frag.appendChild(createDateCardForOffset(o));
+  strip.appendChild(frag);
+  bindDateDrumScroll(strip);
+  const todayIso=toIstanbulDateStr(new Date());
+  const todayCard=strip.querySelector(`[data-iso="${todayIso}"]`);
+  if(todayCard){
+    selectDate(todayIso,todayCard,false);
+    requestAnimationFrame(()=>{
+      todayCard.scrollIntoView({inline:'center',block:'nearest',behavior:'instant'});
+    });
   }
 }
 
@@ -175,12 +279,14 @@ function clearBookingState(){
 }
 
 function selectDate(iso,el,load=true){
-  document.querySelectorAll('.date-card').forEach(c=>c.classList.remove('active'));
-  el.classList.add('active');selectedDate=iso;
+  const changed=iso!==selectedDate;
+  document.querySelectorAll('#dateStrip .date-card').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  selectedDate=iso;
   const d=new Date(iso+'T12:00:00+03:00');
   document.getElementById('selectedDateLabel').textContent=`${DAY_NAMES[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
-  clearBookingState();
-  if(load)loadSlots();
+  if(changed)clearBookingState();
+  if(load&&changed)loadSlots();
 }
 
 function getCombinedDiscount(slot){

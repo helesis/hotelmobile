@@ -30,7 +30,7 @@ function renderAuthPage() {
       <div class="auth-bg"></div>
       <div class="auth-card">
         <div class="auth-logo">
-          <div class="brand">Voyage Sorgun</div>
+          <div class="brand">Some Lucky Resort</div>
           <div class="sub">Spa &amp; Wellness</div>
         </div>
         <div class="auth-tabs">
